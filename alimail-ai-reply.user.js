@@ -281,9 +281,11 @@ Reply:`,
         .alimail-suggestions-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; }
         .alimail-suggestion-item { padding: 12px 16px; background: #fff; border: 1px solid #e8eaed; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 14px; line-height: 1.5; }
         .alimail-suggestion-item:hover { border-color: #1a73e8; background: rgba(26,115,232,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .alimail-suggestion-loading { display: flex; flex-direction: column; align-items: center; padding: 40px; color: #5f6368; }
+        .alimail-suggestion-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #5f6368; }
         .alimail-suggestion-loading::before { content: ""; width: 24px; height: 24px; border: 2px solid #e8eaed; border-top-color: currentColor; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
         .alimail-analyze-btn { margin: 16px; }
+        .alimail-suggestion-category { font-size: 12px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 16px 4px; }
+        .alimail-suggestion-category:first-child { margin-top: 0; }
     `;
     GM_addStyle(styles);
 
@@ -741,62 +743,93 @@ Example:
         const lang = document.getElementById("alimail-language")?.value || "chinese";
         const langInstruction = languageInstructions[lang] || languageInstructions.chinese;
 
-        return `You are a professional email assistant. Analyze the following email and generate 5 different reply suggestions based on the context and tone of the conversation.
+        return `You are a professional email assistant. Analyze the following email and generate 3 different reply suggestions.
 
 ${langInstruction}
+
+Tone: ${settings.toneConcise}
 
 Original email:
 ---
 ${originalEmail}
 ---
 
-Generate 5 different reply options. Each option should be a complete, ready-to-send reply that:
-1. Matches the context and tone of the original email
-2. Is appropriate for business/professional communication
-3. Does NOT include a subject line
-4. Does NOT include a signature (name, title, contact info, etc.)
+Generate 3 different reply options with different attitudes:
 
-Format your response exactly as follows (each reply on its own line, separated by "---SPLIT---"):
+1. POSITIVE: Accept the request or express willingness to help. Use phrases like "Will do", "Will assist", "Will participate", "Happy to help", "Sure, I can", etc.
 
-REPLY 1: [First reply option]
+2. NEUTRAL: Don't promise anything specific. Use a reply that acknowledges the email without making a decision or commitment. Be polite but non-committal.
+
+3. NEGATIVE: Decline the request or express inability to help. Use phrases like "Won't be able to", "Can't assist", "Unable to participate", "Unfortunately, I cannot", etc. Be polite but firm in deflecting the request.
+
+Each option should be a complete, ready-to-send reply that:
+- Is concise and to the point
+- Is appropriate for business/professional communication
+- Does NOT include a subject line
+- Does NOT include a signature (name, title, contact info, etc.)
+
+Format your response exactly as follows (separated by "---SPLIT---"):
+
+POSITIVE: [Positive reply option]
 ---SPLIT---
-REPLY 2: [Second reply option]
+NEUTRAL: [Neutral reply option]
 ---SPLIT---
-REPLY 3: [Third reply option]
----SPLIT---
-REPLY 4: [Fourth reply option]
----SPLIT---
-REPLY 5: [Fifth reply option]`;
+NEGATIVE: [Negative reply option]`;
     }
 
-    // Parse LLM response into suggestions array
+    // Parse LLM response into categorized suggestions
     function parseSuggestions(response) {
-        // Remove the "REPLY X:" prefixes and split by separator
-        const cleanResponse = response.replace(/REPLY \d+:\s*/gi, '');
-        const suggestions = cleanResponse.split(/---SPLIT---/i)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
-        return suggestions.length > 0 ? suggestions : [response.trim()];
+        const categories = { positive: null, neutral: null, negative: null };
+        
+        // Split by separator and parse each section
+        const parts = response.split(/---SPLIT---/i);
+        
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (trimmed.toUpperCase().startsWith('POSITIVE:')) {
+                categories.positive = trimmed.replace(/^POSITIVE:\s*/i, '').trim();
+            } else if (trimmed.toUpperCase().startsWith('NEUTRAL:')) {
+                categories.neutral = trimmed.replace(/^NEUTRAL:\s*/i, '').trim();
+            } else if (trimmed.toUpperCase().startsWith('NEGATIVE:')) {
+                categories.negative = trimmed.replace(/^NEGATIVE:\s*/i, '').trim();
+            }
+        });
+        
+        return categories;
     }
 
-    // Display suggestions as clickable items
-    function displaySuggestions(suggestions) {
+    // Display categorized suggestions as clickable items
+    function displaySuggestions(categories) {
         const container = document.getElementById("alimail-suggestions-container");
-        if (!suggestions || suggestions.length === 0) {
-            container.innerHTML = '<div class="alimail-error">No suggestions generated. Please try again.</div>';
+        if (!categories || (!categories.positive && !categories.neutral && !categories.negative)) {
+            container.innerHTML = '<div class="alimail-error" style="padding: 40px;">No suggestions generated. Please try again.</div>';
             return;
         }
 
         let html = '';
-        suggestions.forEach((suggestion, index) => {
-            html += `<button class="alimail-suggestion-item" data-index="${index}">${escapeHtml(suggestion)}</button>`;
-        });
+        
+        if (categories.positive) {
+            html += `<div class="alimail-suggestion-category">Positive - Will Do / Accept</div>`;
+            html += `<button class="alimail-suggestion-item" data-type="positive">${escapeHtml(categories.positive)}</button>`;
+        }
+        
+        if (categories.neutral) {
+            html += `<div class="alimail-suggestion-category">Neutral - No Decision</div>`;
+            html += `<button class="alimail-suggestion-item" data-type="neutral">${escapeHtml(categories.neutral)}</button>`;
+        }
+        
+        if (categories.negative) {
+            html += `<div class="alimail-suggestion-category">Negative - Won't Do / Decline</div>`;
+            html += `<button class="alimail-suggestion-item" data-type="negative">${escapeHtml(categories.negative)}</button>`;
+        }
+        
         container.innerHTML = html;
 
         // Add click handlers
         container.querySelectorAll('.alimail-suggestion-item').forEach(btn => {
             btn.addEventListener('click', function() {
-                const text = suggestions[parseInt(this.dataset.index)];
+                const type = this.dataset.type;
+                const text = categories[type];
                 const success = insertIntoEmailBody(text);
                 
                 // Visual feedback
