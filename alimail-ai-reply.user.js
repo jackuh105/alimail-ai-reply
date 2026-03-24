@@ -22,7 +22,38 @@
             model: 'gpt-4o-mini',
             apiUrl: '',
             temperature: 0.7,
-            maxTokens: 2000
+            maxTokens: 2000,
+            promptTemplate: `You are a professional email assistant. Your task is to help draft a well-structured, professional email reply.
+
+{{TONE_INSTRUCTION}}
+
+{{LANGUAGE_INSTRUCTION}}
+
+Original email:
+---
+{{ORIGINAL_EMAIL}}
+---
+
+Key points to include:
+{{USER_INPUT}}
+
+Please write a complete, professional email reply that:
+1. Addresses the sender appropriately
+2. Incorporates all the key points provided
+3. Maintains proper email etiquette
+4. Has a clear subject line reference if applicable
+5. Includes an appropriate greeting and closing
+6. Do NOT include a signature (name, title, contact info, etc.)
+
+Reply:`,
+            toneProfessional: 'Use a formal, professional tone appropriate for business communication.',
+            toneFriendly: 'Use a warm, friendly, and approachable tone while maintaining professionalism.',
+            toneConcise: 'Be brief and to the point. Avoid unnecessary words while maintaining politeness.',
+            toneDetailed: 'Provide a comprehensive response with thorough explanations and context.',
+            langChinese: 'Write the reply in Traditional Chinese (繁體中文).',
+            langEnglish: 'Write the reply in English.',
+            langPortuguese: 'Write the reply in Portuguese.',
+            langMixed: 'Use the same language as the original email, or mix languages naturally if appropriate.'
         },
         providers: {
             openai: {
@@ -83,7 +114,16 @@
                 model: this.get('model'),
                 apiUrl: this.get('apiUrl'),
                 temperature: this.get('temperature'),
-                maxTokens: this.get('maxTokens')
+                maxTokens: this.get('maxTokens'),
+                promptTemplate: this.get('promptTemplate'),
+                toneProfessional: this.get('toneProfessional'),
+                toneFriendly: this.get('toneFriendly'),
+                toneConcise: this.get('toneConcise'),
+                toneDetailed: this.get('toneDetailed'),
+                langChinese: this.get('langChinese'),
+                langEnglish: this.get('langEnglish'),
+                langPortuguese: this.get('langPortuguese'),
+                langMixed: this.get('langMixed')
             };
         },
         saveAll(settings) {
@@ -237,41 +277,25 @@
 
     // Build prompt for LLM
     function buildPrompt(originalEmail, userInput, tone, language) {
+        const settings = Settings.getAll();
         const toneInstructions = {
-            professional: "Use a formal, professional tone appropriate for business communication.",
-            friendly: "Use a warm, friendly, and approachable tone while maintaining professionalism.",
-            concise: "Be brief and to the point. Avoid unnecessary words while maintaining politeness.",
-            detailed: "Provide a comprehensive response with thorough explanations and context."
+            professional: settings.toneProfessional,
+            friendly: settings.toneFriendly,
+            concise: settings.toneConcise,
+            detailed: settings.toneDetailed
         };
         const languageInstructions = {
-            chinese: "Write the reply in Traditional Chinese (繁體中文).",
-            english: "Write the reply in English.",
-            portuguese: "Write the reply in Portuguese.",
-            mixed: "Use the same language as the original email, or mix languages naturally if appropriate."
+            chinese: settings.langChinese,
+            english: settings.langEnglish,
+            portuguese: settings.langPortuguese,
+            mixed: settings.langMixed
         };
-        return `You are a professional email assistant. Your task is to help draft a well-structured, professional email reply.
-
-${toneInstructions[tone] || toneInstructions.professional}
-
-${languageInstructions[language] || languageInstructions.chinese}
-
-Original email:
----
-${originalEmail || "(No original email content)"}
----
-
-Key points to include:
-${userInput}
-
-Please write a complete, professional email reply that:
-1. Addresses the sender appropriately
-2. Incorporates all the key points provided
-3. Maintains proper email etiquette
-4. Has a clear subject line reference if applicable
-5. Includes an appropriate greeting and closing
-6. Do NOT include a signature (name, title, contact info, etc.)
-
-Reply:`;
+        
+        return settings.promptTemplate
+            .replace('{{TONE_INSTRUCTION}}', toneInstructions[tone] || toneInstructions.professional)
+            .replace('{{LANGUAGE_INSTRUCTION}}', languageInstructions[language] || languageInstructions.chinese)
+            .replace('{{ORIGINAL_EMAIL}}', originalEmail || '(No original email content)')
+            .replace('{{USER_INPUT}}', userInput);
     }
 
     // Call LLM API
@@ -469,6 +493,52 @@ Example:
                         <div class="alimail-help-text">Leave empty to use provider default.</div>
                     </div>
                 </div>
+                <div class="alimail-settings-section">
+                    <div class="alimail-settings-section-title">Prompt Templates</div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">Main Prompt Template</div>
+                        <textarea class="alimail-textarea large" id="settings-prompt-template" placeholder="${CONFIG.defaults.promptTemplate.substring(0, 50)}...">${settings.promptTemplate || ""}</textarea>
+                        <div class="alimail-help-text">Available variables: {{TONE_INSTRUCTION}}, {{LANGUAGE_INSTRUCTION}}, {{ORIGINAL_EMAIL}}, {{USER_INPUT}}</div>
+                    </div>
+                    <details>
+                        <summary style="cursor: pointer; color: #1a73e8; font-size: 13px; margin-bottom: 12px;">Edit Tone Instructions</summary>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Professional Tone</div>
+                            <input type="text" class="alimail-input" id="settings-tone-professional" value="${settings.toneProfessional || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Friendly Tone</div>
+                            <input type="text" class="alimail-input" id="settings-tone-friendly" value="${settings.toneFriendly || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Concise Tone</div>
+                            <input type="text" class="alimail-input" id="settings-tone-concise" value="${settings.toneConcise || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Detailed Tone</div>
+                            <input type="text" class="alimail-input" id="settings-tone-detailed" value="${settings.toneDetailed || ""}">
+                        </div>
+                    </details>
+                    <details>
+                        <summary style="cursor: pointer; color: #1a73e8; font-size: 13px; margin-bottom: 12px;">Edit Language Instructions</summary>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Chinese</div>
+                            <input type="text" class="alimail-input" id="settings-lang-chinese" value="${settings.langChinese || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">English</div>
+                            <input type="text" class="alimail-input" id="settings-lang-english" value="${settings.langEnglish || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Portuguese</div>
+                            <input type="text" class="alimail-input" id="settings-lang-portuguese" value="${settings.langPortuguese || ""}">
+                        </div>
+                        <div class="alimail-form-group">
+                            <div class="alimail-label">Mixed</div>
+                            <input type="text" class="alimail-input" id="settings-lang-mixed" value="${settings.langMixed || ""}">
+                        </div>
+                    </details>
+                </div>
             </div>
             <div class="alimail-settings-footer">
                 <button class="alimail-button secondary" id="settings-cancel">Cancel</button>
@@ -486,7 +556,16 @@ Example:
                 model: document.getElementById("settings-model").value,
                 apiUrl: document.getElementById("settings-apiurl").value,
                 temperature: 0.7,
-                maxTokens: 2000
+                maxTokens: 2000,
+                promptTemplate: document.getElementById("settings-prompt-template").value,
+                toneProfessional: document.getElementById("settings-tone-professional").value,
+                toneFriendly: document.getElementById("settings-tone-friendly").value,
+                toneConcise: document.getElementById("settings-tone-concise").value,
+                toneDetailed: document.getElementById("settings-tone-detailed").value,
+                langChinese: document.getElementById("settings-lang-chinese").value,
+                langEnglish: document.getElementById("settings-lang-english").value,
+                langPortuguese: document.getElementById("settings-lang-portuguese").value,
+                langMixed: document.getElementById("settings-lang-mixed").value
             });
             overlay.classList.remove("visible");
         });
