@@ -345,7 +345,7 @@ Reply:`,
         const headers = {
             "Content-Type": "application/json"
         };
-        if (provider.needsApiKey && settings.apiKey) {
+        if (settings.apiKey) {
             headers[provider.authHeader] = provider.authPrefix + settings.apiKey;
         }
 
