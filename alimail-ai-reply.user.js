@@ -501,6 +501,7 @@ Example:
         document.querySelectorAll(".alimail-header").forEach(h => h.style.background = colors.primary);
         document.querySelectorAll(".alimail-button:not(.alimail-copy-btn):not(.secondary)").forEach(b => {
             b.style.background = colors.primary;
+            b.style.color = "#fff";
             b.onmouseenter = () => b.style.background = colors.primaryHover;
             b.onmouseleave = () => b.style.background = colors.primary;
         });
