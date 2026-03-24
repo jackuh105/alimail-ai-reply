@@ -268,6 +268,7 @@ Please write a complete, professional email reply that:
 3. Maintains proper email etiquette
 4. Has a clear subject line reference if applicable
 5. Includes an appropriate greeting and closing
+6. Do NOT include a signature (name, title, contact info, etc.)
 
 Reply:`;
     }
