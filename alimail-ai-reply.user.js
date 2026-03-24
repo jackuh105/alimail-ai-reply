@@ -272,6 +272,21 @@ Reply:`,
         .alimail-settings-footer { display: flex; gap: 12px; padding: 16px; border-top: 1px solid #e8eaed; background: #f8f9fa; align-items: center; }
         .alimail-settings-footer .alimail-button { flex: 1; display: flex; justify-content: center; align-items: center; }
         .alimail-settings-footer .alimail-button.secondary { background: #fff; color: #5f6368; border: 1px solid #dadce0; }
+        .alimail-tabs { display: flex; border-bottom: 1px solid #e8eaed; background: #f8f9fa; flex-shrink: 0; }
+        .alimail-tab { flex: 1; padding: 12px 16px; text-align: center; cursor: pointer; font-size: 14px; color: #5f6368; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .alimail-tab:hover { color: #1a73e8; background: rgba(26,115,232,0.04); }
+        .alimail-tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 500; }
+        .alimail-tab-panel { display: none; flex: 1; overflow: hidden; }
+        .alimail-tab-panel.active { display: flex; }
+        #tab-smart { flex-direction: column; align-items: center; }
+        .alimail-suggestions-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; width: 100%; }
+        .alimail-suggestion-item { padding: 12px 16px; background: #fff; border: 1px solid #e8eaed; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 14px; line-height: 1.5; }
+        .alimail-suggestion-item:hover { border-color: #1a73e8; background: rgba(26,115,232,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .alimail-suggestion-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: #5f6368; text-align: center; }
+        .alimail-suggestion-loading::before { content: ""; width: 24px; height: 24px; border: 2px solid #e8eaed; border-top-color: currentColor; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+        .alimail-analyze-btn { margin: 16px; }
+        .alimail-suggestion-category { font-size: 12px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 16px 4px; }
+        .alimail-suggestion-category:first-child { margin-top: 0; }
     `;
     GM_addStyle(styles);
 
@@ -391,7 +406,11 @@ Reply:`,
                     <span class="alimail-close" title="Close">✕</span>
                 </div>
             </div>
-            <div class="alimail-content">
+            <div class="alimail-tabs">
+                <div class="alimail-tab active" data-tab="custom">Custom Reply</div>
+                <div class="alimail-tab" data-tab="smart">Smart Suggestions</div>
+            </div>
+            <div class="alimail-tab-panel active" id="tab-custom">
                 <div class="alimail-column">
                     <div class="alimail-column-header">Compose Reply</div>
                     <div class="alimail-column-content">
@@ -440,8 +459,27 @@ Example:
                     </div>
                 </div>
             </div>
+            <div class="alimail-tab-panel" id="tab-smart">
+                <div class="alimail-suggestions-container" id="alimail-suggestions-container">
+                    <div class="alimail-suggestion-loading">Analyzing email and generating suggestions...</div>
+                </div>
+            </div>
         `;
         document.body.appendChild(overlay);
+
+        // Tab switching
+        overlay.querySelectorAll('.alimail-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                overlay.querySelectorAll('.alimail-tab').forEach(t => t.classList.remove('active'));
+                overlay.querySelectorAll('.alimail-tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                overlay.querySelector(`#tab-${tabName}`).classList.add('active');
+                if (tabName === 'smart') {
+                    generateSmartSuggestions();
+                }
+            });
+        });
 
         overlay.querySelector(".alimail-close").addEventListener("click", () => overlay.classList.remove("visible"));
         overlay.querySelector(".alimail-settings-btn").addEventListener("click", () => {
@@ -670,6 +708,188 @@ Example:
                 container.dataset.fullText = "";
             }
         }
+    }
+
+    // Generate smart suggestions based on email content
+    async function generateSmartSuggestions() {
+        const originalEmail = extractOriginalEmail();
+        const suggestionsContainer = document.getElementById("alimail-suggestions-container");
+
+        if (!originalEmail || originalEmail.length < 10) {
+            suggestionsContainer.innerHTML = '<div class="alimail-error" style="padding: 40px;">No email content found to analyze. Please open an email first.</div>';
+            return;
+        }
+
+        suggestionsContainer.innerHTML = '<div class="alimail-suggestion-loading">Analyzing email and generating suggestions...</div>';
+
+        try {
+            const prompt = buildSmartSuggestionsPrompt(originalEmail);
+            const response = await callLLM(prompt);
+            const suggestions = parseSuggestions(response);
+            displaySuggestions(suggestions);
+        } catch (error) {
+            suggestionsContainer.innerHTML = `<div class="alimail-error" style="padding: 40px;"><strong>Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    // Build prompt for smart suggestions
+    function buildSmartSuggestionsPrompt(originalEmail) {
+        const settings = Settings.getAll();
+        const languageInstructions = {
+            chinese: settings.langChinese,
+            english: settings.langEnglish,
+            portuguese: settings.langPortuguese,
+            mixed: settings.langMixed
+        };
+        const lang = document.getElementById("alimail-language")?.value || "chinese";
+        const langInstruction = languageInstructions[lang] || languageInstructions.chinese;
+
+        return `You are a professional email assistant. Analyze the following email and generate 9 different reply suggestions (3 for each attitude category, using different tones).
+
+${langInstruction}
+
+Original email:
+---
+${originalEmail}
+---
+
+Generate 9 reply options organized by attitude and tone:
+
+**POSITIVE** (Accept the request, express willingness to help):
+- POSITIVE CONCISE: Brief and to-the-point acceptance
+- POSITIVE FRIENDLY: Warm, friendly acceptance while maintaining professionalism
+- POSITIVE PROFESSIONAL: Formal, professional acceptance
+
+**NEUTRAL** (Don't promise anything, acknowledge without commitment):
+- NEUTRAL CONCISE: Brief, non-committal acknowledgment
+- NEUTRAL FRIENDLY: Warm but non-committal response
+- NEUTRAL PROFESSIONAL: Formal acknowledgment without decision
+
+**NEGATIVE** (Decline the request, express inability to help):
+- NEGATIVE CONCISE: Brief, polite rejection
+- NEGATIVE FRIENDLY: Warm but firm refusal
+- NEGATIVE PROFESSIONAL: Formal, professional decline
+
+Each reply should be:
+- A complete, ready-to-send reply
+- Appropriate for business/professional communication
+- Does NOT include a subject line
+- Does NOT include a signature (name, title, contact info, etc.)
+
+Format your response exactly as follows (separated by "---SPLIT---"):
+
+POSITIVE CONCISE: [Reply text]
+---SPLIT---
+POSITIVE FRIENDLY: [Reply text]
+---SPLIT---
+POSITIVE PROFESSIONAL: [Reply text]
+---SPLIT---
+NEUTRAL CONCISE: [Reply text]
+---SPLIT---
+NEUTRAL FRIENDLY: [Reply text]
+---SPLIT---
+NEUTRAL PROFESSIONAL: [Reply text]
+---SPLIT---
+NEGATIVE CONCISE: [Reply text]
+---SPLIT---
+NEGATIVE FRIENDLY: [Reply text]
+---SPLIT---
+NEGATIVE PROFESSIONAL: [Reply text]`;
+    }
+
+    // Parse LLM response into categorized suggestions with tones
+    function parseSuggestions(response) {
+        const categories = {
+            positive: { concise: null, friendly: null, professional: null },
+            neutral: { concise: null, friendly: null, professional: null },
+            negative: { concise: null, friendly: null, professional: null }
+        };
+        
+        // Split by separator and parse each section
+        const parts = response.split(/---SPLIT---/i);
+        
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            const match = trimmed.match(/^([A-Z]+)\s+([A-Z]+):\s*(.+)$/is);
+            if (match) {
+                const [, attitude, tone, text] = match;
+                const attKey = attitude.toLowerCase();
+                const toneKey = tone.toLowerCase();
+                if (categories[attKey] && categories[attKey][toneKey] !== undefined) {
+                    categories[attKey][toneKey] = text.trim();
+                }
+            }
+        });
+        
+        return categories;
+    }
+
+    // Display categorized suggestions as clickable items
+    function displaySuggestions(categories) {
+        const container = document.getElementById("alimail-suggestions-container");
+        const hasAny = categories.positive.concise || categories.positive.friendly || categories.positive.professional ||
+                       categories.neutral.concise || categories.neutral.friendly || categories.neutral.professional ||
+                       categories.negative.concise || categories.negative.friendly || categories.negative.professional;
+        
+        if (!hasAny) {
+            container.innerHTML = '<div class="alimail-error" style="padding: 40px;">No suggestions generated. Please try again.</div>';
+            return;
+        }
+
+        let html = '';
+        
+        // Neutral category (first)
+        const hasNeutral = categories.neutral.concise || categories.neutral.friendly || categories.neutral.professional;
+        if (hasNeutral) {
+            html += `<div class="alimail-suggestion-category">Neutral - No Decision</div>`;
+            ['concise', 'friendly', 'professional'].forEach(tone => {
+                if (categories.neutral[tone]) {
+                    html += `<button class="alimail-suggestion-item" data-category="neutral" data-tone="${tone}">${escapeHtml(categories.neutral[tone])}</button>`;
+                }
+            });
+        }
+        
+        // Positive category (second)
+        const hasPositive = categories.positive.concise || categories.positive.friendly || categories.positive.professional;
+        if (hasPositive) {
+            html += `<div class="alimail-suggestion-category">Positive - Will Do / Accept</div>`;
+            ['concise', 'friendly', 'professional'].forEach(tone => {
+                if (categories.positive[tone]) {
+                    html += `<button class="alimail-suggestion-item" data-category="positive" data-tone="${tone}">${escapeHtml(categories.positive[tone])}</button>`;
+                }
+            });
+        }
+        
+        // Negative category (third)
+        const hasNegative = categories.negative.concise || categories.negative.friendly || categories.negative.professional;
+        if (hasNegative) {
+            html += `<div class="alimail-suggestion-category">Negative - Won't Do / Decline</div>`;
+            ['concise', 'friendly', 'professional'].forEach(tone => {
+                if (categories.negative[tone]) {
+                    html += `<button class="alimail-suggestion-item" data-category="negative" data-tone="${tone}">${escapeHtml(categories.negative[tone])}</button>`;
+                }
+            });
+        }
+        
+        container.innerHTML = html;
+
+        // Add click handlers
+        container.querySelectorAll('.alimail-suggestion-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.dataset.category;
+                const tone = this.dataset.tone;
+                const text = categories[category][tone];
+                const success = insertIntoEmailBody(text);
+                
+                // Visual feedback
+                this.style.background = success ? '#d4edda' : '#fce8e8';
+                this.style.borderColor = success ? '#c3e6cb' : '#f5c6cb';
+                setTimeout(() => {
+                    this.style.background = '';
+                    this.style.borderColor = '';
+                }, 1500);
+            });
+        });
     }
 
     // Generate reply
