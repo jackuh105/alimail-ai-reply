@@ -457,22 +457,8 @@ Example:
                 </div>
             </div>
             <div class="alimail-tab-panel" id="tab-smart">
-                <div class="alimail-column" style="border-right: 1px solid #e8eaed;">
-                    <div class="alimail-column-header">Original Email</div>
-                    <div class="alimail-column-content">
-                        <div class="alimail-section">
-                            <div class="alimail-original-box" id="alimail-original-text-smart">
-                                <div class="alimail-original-placeholder">Loading...</div>
-                            </div>
-                        </div>
-                        <button class="alimail-button alimail-analyze-btn" id="alimail-analyze">Analyze & Generate Suggestions</button>
-                    </div>
-                </div>
-                <div class="alimail-column">
-                    <div class="alimail-column-header">Suggested Replies</div>
-                    <div class="alimail-suggestions-container" id="alimail-suggestions-container">
-                        <div class="alimail-result-placeholder" style="padding: 60px;">Click "Analyze & Generate Suggestions" to get AI-powered reply options based on the email context.</div>
-                    </div>
+                <div class="alimail-suggestions-container" id="alimail-suggestions-container">
+                    <div class="alimail-suggestion-loading">Analyzing email and generating suggestions...</div>
                 </div>
             </div>
         `;
@@ -487,7 +473,7 @@ Example:
                 tab.classList.add('active');
                 overlay.querySelector(`#tab-${tabName}`).classList.add('active');
                 if (tabName === 'smart') {
-                    updateOriginalEmailSmart();
+                    generateSmartSuggestions();
                 }
             });
         });
@@ -498,7 +484,6 @@ Example:
             if (settingsOverlay) settingsOverlay.classList.add("visible");
         });
         overlay.querySelector("#alimail-generate").addEventListener("click", generateReply);
-        overlay.querySelector("#alimail-analyze").addEventListener("click", generateSmartSuggestions);
         
         applyTheme();
         return overlay;
@@ -722,34 +707,16 @@ Example:
         }
     }
 
-    function updateOriginalEmailSmart() {
-        const text = extractOriginalEmail();
-        const container = document.getElementById("alimail-original-text-smart");
-        if (container) {
-            if (text) {
-                container.textContent = text;
-                container.dataset.fullText = text;
-            } else {
-                container.innerHTML = '<div class="alimail-original-placeholder">Could not extract email content.</div>';
-                container.dataset.fullText = "";
-            }
-        }
-    }
-
     // Generate smart suggestions based on email content
     async function generateSmartSuggestions() {
-        const originalEl = document.getElementById("alimail-original-text-smart");
-        const originalEmail = originalEl?.dataset.fullText || originalEl?.textContent || "";
+        const originalEmail = extractOriginalEmail();
         const suggestionsContainer = document.getElementById("alimail-suggestions-container");
-        const analyzeBtn = document.getElementById("alimail-analyze");
 
         if (!originalEmail || originalEmail.length < 10) {
-            suggestionsContainer.innerHTML = '<div class="alimail-error">No email content found to analyze. Please open an email first.</div>';
+            suggestionsContainer.innerHTML = '<div class="alimail-error" style="padding: 40px;">No email content found to analyze. Please open an email first.</div>';
             return;
         }
 
-        analyzeBtn.disabled = true;
-        analyzeBtn.textContent = "Analyzing...";
         suggestionsContainer.innerHTML = '<div class="alimail-suggestion-loading">Analyzing email and generating suggestions...</div>';
 
         try {
@@ -758,10 +725,7 @@ Example:
             const suggestions = parseSuggestions(response);
             displaySuggestions(suggestions);
         } catch (error) {
-            suggestionsContainer.innerHTML = `<div class="alimail-error"><strong>Error:</strong> ${error.message}</div>`;
-        } finally {
-            analyzeBtn.disabled = false;
-            analyzeBtn.textContent = "Analyze & Generate Suggestions";
+            suggestionsContainer.innerHTML = `<div class="alimail-error" style="padding: 40px;"><strong>Error:</strong> ${error.message}</div>`;
         }
     }
 
