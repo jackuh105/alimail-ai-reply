@@ -199,8 +199,8 @@
         .alimail-button:active { transform: translateY(1px); }
         .alimail-button:disabled { opacity: 0.6; cursor: not-allowed; }
         .alimail-generate-btn { width: 100%; margin-top: auto; padding: 12px; display: flex; justify-content: center; align-items: center; }
-        .alimail-copy-btn { background: #fff; color: #202124; border: 1px solid #dadce0; }
-        .alimail-copy-btn:hover:not(:disabled) { background: #f8f9fa; }
+        .alimail-copy-btn { background: #4a4a4a; color: #fff; border: 1px solid #4a4a4a; }
+        .alimail-copy-btn:hover:not(:disabled) { background: #3a3a3a; border-color: #3a3a3a; }
         .alimail-copy-btn.copied { background: #34a853; color: #fff; border-color: #34a853; }
         .alimail-insert-btn { background: rgb(239, 73, 68) !important; }
         .alimail-insert-btn:hover:not(:disabled) { background: rgb(220, 60, 55) !important; }
