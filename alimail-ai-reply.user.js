@@ -194,6 +194,7 @@
             padding: 10px 20px; border: none; border-radius: 4px; background: #1a73e8;
             color: #fff; font-size: 14px; font-weight: 500; cursor: pointer;
             transition: all 0.2s; font-family: inherit;
+            display: flex; justify-content: center; align-items: center;
         }
         .alimail-button:hover { box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         .alimail-button:active { transform: translateY(1px); }
@@ -205,7 +206,7 @@
         .alimail-insert-btn { background: rgb(239, 73, 68) !important; }
         .alimail-insert-btn:hover:not(:disabled) { background: rgb(220, 60, 55) !important; }
         .alimail-button-row { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
-        .alimail-button-row .alimail-button { flex: 1; margin: 0; }
+        .alimail-button-row .alimail-button { flex: 1; margin: 0; display: flex; justify-content: center; align-items: center; }
         .alimail-result-box {
             background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 4px;
             padding: 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; min-height: 200px;
