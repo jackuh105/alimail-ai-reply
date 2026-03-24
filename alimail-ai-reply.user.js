@@ -837,37 +837,36 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
         }
 
         let html = '';
-        const toneLabels = { concise: 'Concise', friendly: 'Friendly', professional: 'Professional' };
         
-        // Positive category
-        const hasPositive = categories.positive.concise || categories.positive.friendly || categories.positive.professional;
-        if (hasPositive) {
-            html += `<div class="alimail-suggestion-category">Positive - Will Do / Accept</div>`;
-            ['concise', 'friendly', 'professional'].forEach(tone => {
-                if (categories.positive[tone]) {
-                    html += `<button class="alimail-suggestion-item" data-category="positive" data-tone="${tone}"><strong>${toneLabels[tone]}:</strong> ${escapeHtml(categories.positive[tone])}</button>`;
-                }
-            });
-        }
-        
-        // Neutral category
+        // Neutral category (first)
         const hasNeutral = categories.neutral.concise || categories.neutral.friendly || categories.neutral.professional;
         if (hasNeutral) {
             html += `<div class="alimail-suggestion-category">Neutral - No Decision</div>`;
             ['concise', 'friendly', 'professional'].forEach(tone => {
                 if (categories.neutral[tone]) {
-                    html += `<button class="alimail-suggestion-item" data-category="neutral" data-tone="${tone}"><strong>${toneLabels[tone]}:</strong> ${escapeHtml(categories.neutral[tone])}</button>`;
+                    html += `<button class="alimail-suggestion-item" data-category="neutral" data-tone="${tone}">${escapeHtml(categories.neutral[tone])}</button>`;
                 }
             });
         }
         
-        // Negative category
+        // Positive category (second)
+        const hasPositive = categories.positive.concise || categories.positive.friendly || categories.positive.professional;
+        if (hasPositive) {
+            html += `<div class="alimail-suggestion-category">Positive - Will Do / Accept</div>`;
+            ['concise', 'friendly', 'professional'].forEach(tone => {
+                if (categories.positive[tone]) {
+                    html += `<button class="alimail-suggestion-item" data-category="positive" data-tone="${tone}">${escapeHtml(categories.positive[tone])}</button>`;
+                }
+            });
+        }
+        
+        // Negative category (third)
         const hasNegative = categories.negative.concise || categories.negative.friendly || categories.negative.professional;
         if (hasNegative) {
             html += `<div class="alimail-suggestion-category">Negative - Won't Do / Decline</div>`;
             ['concise', 'friendly', 'professional'].forEach(tone => {
                 if (categories.negative[tone]) {
-                    html += `<button class="alimail-suggestion-item" data-category="negative" data-tone="${tone}"><strong>${toneLabels[tone]}:</strong> ${escapeHtml(categories.negative[tone])}</button>`;
+                    html += `<button class="alimail-suggestion-item" data-category="negative" data-tone="${tone}">${escapeHtml(categories.negative[tone])}</button>`;
                 }
             });
         }
