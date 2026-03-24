@@ -272,6 +272,18 @@ Reply:`,
         .alimail-settings-footer { display: flex; gap: 12px; padding: 16px; border-top: 1px solid #e8eaed; background: #f8f9fa; align-items: center; }
         .alimail-settings-footer .alimail-button { flex: 1; display: flex; justify-content: center; align-items: center; }
         .alimail-settings-footer .alimail-button.secondary { background: #fff; color: #5f6368; border: 1px solid #dadce0; }
+        .alimail-tabs { display: flex; border-bottom: 1px solid #e8eaed; background: #f8f9fa; flex-shrink: 0; }
+        .alimail-tab { flex: 1; padding: 12px 16px; text-align: center; cursor: pointer; font-size: 14px; color: #5f6368; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .alimail-tab:hover { color: #1a73e8; background: rgba(26,115,232,0.04); }
+        .alimail-tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 500; }
+        .alimail-tab-panel { display: none; flex: 1; overflow: hidden; }
+        .alimail-tab-panel.active { display: flex; }
+        .alimail-suggestions-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; }
+        .alimail-suggestion-item { padding: 12px 16px; background: #fff; border: 1px solid #e8eaed; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 14px; line-height: 1.5; }
+        .alimail-suggestion-item:hover { border-color: #1a73e8; background: rgba(26,115,232,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .alimail-suggestion-loading { display: flex; flex-direction: column; align-items: center; padding: 40px; color: #5f6368; }
+        .alimail-suggestion-loading::before { content: ""; width: 24px; height: 24px; border: 2px solid #e8eaed; border-top-color: currentColor; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+        .alimail-analyze-btn { margin: 16px; }
     `;
     GM_addStyle(styles);
 
@@ -391,7 +403,11 @@ Reply:`,
                     <span class="alimail-close" title="Close">✕</span>
                 </div>
             </div>
-            <div class="alimail-content">
+            <div class="alimail-tabs">
+                <div class="alimail-tab active" data-tab="custom">Custom Reply</div>
+                <div class="alimail-tab" data-tab="smart">Smart Suggestions</div>
+            </div>
+            <div class="alimail-tab-panel active" id="tab-custom">
                 <div class="alimail-column">
                     <div class="alimail-column-header">Compose Reply</div>
                     <div class="alimail-column-content">
@@ -440,8 +456,41 @@ Example:
                     </div>
                 </div>
             </div>
+            <div class="alimail-tab-panel" id="tab-smart">
+                <div class="alimail-column" style="border-right: 1px solid #e8eaed;">
+                    <div class="alimail-column-header">Original Email</div>
+                    <div class="alimail-column-content">
+                        <div class="alimail-section">
+                            <div class="alimail-original-box" id="alimail-original-text-smart">
+                                <div class="alimail-original-placeholder">Loading...</div>
+                            </div>
+                        </div>
+                        <button class="alimail-button alimail-analyze-btn" id="alimail-analyze">Analyze & Generate Suggestions</button>
+                    </div>
+                </div>
+                <div class="alimail-column">
+                    <div class="alimail-column-header">Suggested Replies</div>
+                    <div class="alimail-suggestions-container" id="alimail-suggestions-container">
+                        <div class="alimail-result-placeholder" style="padding: 60px;">Click "Analyze & Generate Suggestions" to get AI-powered reply options based on the email context.</div>
+                    </div>
+                </div>
+            </div>
         `;
         document.body.appendChild(overlay);
+
+        // Tab switching
+        overlay.querySelectorAll('.alimail-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                overlay.querySelectorAll('.alimail-tab').forEach(t => t.classList.remove('active'));
+                overlay.querySelectorAll('.alimail-tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                overlay.querySelector(`#tab-${tabName}`).classList.add('active');
+                if (tabName === 'smart') {
+                    updateOriginalEmailSmart();
+                }
+            });
+        });
 
         overlay.querySelector(".alimail-close").addEventListener("click", () => overlay.classList.remove("visible"));
         overlay.querySelector(".alimail-settings-btn").addEventListener("click", () => {
@@ -449,6 +498,7 @@ Example:
             if (settingsOverlay) settingsOverlay.classList.add("visible");
         });
         overlay.querySelector("#alimail-generate").addEventListener("click", generateReply);
+        overlay.querySelector("#alimail-analyze").addEventListener("click", generateSmartSuggestions);
         
         applyTheme();
         return overlay;
@@ -670,6 +720,130 @@ Example:
                 container.dataset.fullText = "";
             }
         }
+    }
+
+    function updateOriginalEmailSmart() {
+        const text = extractOriginalEmail();
+        const container = document.getElementById("alimail-original-text-smart");
+        if (container) {
+            if (text) {
+                container.textContent = text;
+                container.dataset.fullText = text;
+            } else {
+                container.innerHTML = '<div class="alimail-original-placeholder">Could not extract email content.</div>';
+                container.dataset.fullText = "";
+            }
+        }
+    }
+
+    // Generate smart suggestions based on email content
+    async function generateSmartSuggestions() {
+        const originalEl = document.getElementById("alimail-original-text-smart");
+        const originalEmail = originalEl?.dataset.fullText || originalEl?.textContent || "";
+        const suggestionsContainer = document.getElementById("alimail-suggestions-container");
+        const analyzeBtn = document.getElementById("alimail-analyze");
+
+        if (!originalEmail || originalEmail.length < 10) {
+            suggestionsContainer.innerHTML = '<div class="alimail-error">No email content found to analyze. Please open an email first.</div>';
+            return;
+        }
+
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = "Analyzing...";
+        suggestionsContainer.innerHTML = '<div class="alimail-suggestion-loading">Analyzing email and generating suggestions...</div>';
+
+        try {
+            const prompt = buildSmartSuggestionsPrompt(originalEmail);
+            const response = await callLLM(prompt);
+            const suggestions = parseSuggestions(response);
+            displaySuggestions(suggestions);
+        } catch (error) {
+            suggestionsContainer.innerHTML = `<div class="alimail-error"><strong>Error:</strong> ${error.message}</div>`;
+        } finally {
+            analyzeBtn.disabled = false;
+            analyzeBtn.textContent = "Analyze & Generate Suggestions";
+        }
+    }
+
+    // Build prompt for smart suggestions
+    function buildSmartSuggestionsPrompt(originalEmail) {
+        const settings = Settings.getAll();
+        const languageInstructions = {
+            chinese: settings.langChinese,
+            english: settings.langEnglish,
+            portuguese: settings.langPortuguese,
+            mixed: settings.langMixed
+        };
+        const lang = document.getElementById("alimail-language")?.value || "chinese";
+        const langInstruction = languageInstructions[lang] || languageInstructions.chinese;
+
+        return `You are a professional email assistant. Analyze the following email and generate 5 different reply suggestions based on the context and tone of the conversation.
+
+${langInstruction}
+
+Original email:
+---
+${originalEmail}
+---
+
+Generate 5 different reply options. Each option should be a complete, ready-to-send reply that:
+1. Matches the context and tone of the original email
+2. Is appropriate for business/professional communication
+3. Does NOT include a subject line
+4. Does NOT include a signature (name, title, contact info, etc.)
+
+Format your response exactly as follows (each reply on its own line, separated by "---SPLIT---"):
+
+REPLY 1: [First reply option]
+---SPLIT---
+REPLY 2: [Second reply option]
+---SPLIT---
+REPLY 3: [Third reply option]
+---SPLIT---
+REPLY 4: [Fourth reply option]
+---SPLIT---
+REPLY 5: [Fifth reply option]`;
+    }
+
+    // Parse LLM response into suggestions array
+    function parseSuggestions(response) {
+        // Remove the "REPLY X:" prefixes and split by separator
+        const cleanResponse = response.replace(/REPLY \d+:\s*/gi, '');
+        const suggestions = cleanResponse.split(/---SPLIT---/i)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        return suggestions.length > 0 ? suggestions : [response.trim()];
+    }
+
+    // Display suggestions as clickable items
+    function displaySuggestions(suggestions) {
+        const container = document.getElementById("alimail-suggestions-container");
+        if (!suggestions || suggestions.length === 0) {
+            container.innerHTML = '<div class="alimail-error">No suggestions generated. Please try again.</div>';
+            return;
+        }
+
+        let html = '';
+        suggestions.forEach((suggestion, index) => {
+            html += `<button class="alimail-suggestion-item" data-index="${index}">${escapeHtml(suggestion)}</button>`;
+        });
+        container.innerHTML = html;
+
+        // Add click handlers
+        container.querySelectorAll('.alimail-suggestion-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const text = suggestions[parseInt(this.dataset.index)];
+                const success = insertIntoEmailBody(text);
+                
+                // Visual feedback
+                this.style.background = success ? '#d4edda' : '#fce8e8';
+                this.style.borderColor = success ? '#c3e6cb' : '#f5c6cb';
+                setTimeout(() => {
+                    this.style.background = '';
+                    this.style.borderColor = '';
+                }, 1500);
+            });
+        });
     }
 
     // Generate reply
