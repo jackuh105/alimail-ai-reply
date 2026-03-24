@@ -278,7 +278,8 @@ Reply:`,
         .alimail-tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 500; }
         .alimail-tab-panel { display: none; flex: 1; overflow: hidden; }
         .alimail-tab-panel.active { display: flex; }
-        .alimail-suggestions-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; }
+        #tab-smart { flex-direction: column; align-items: center; }
+        .alimail-suggestions-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; width: 100%; max-width: 700px; }
         .alimail-suggestion-item { padding: 12px 16px; background: #fff; border: 1px solid #e8eaed; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 14px; line-height: 1.5; }
         .alimail-suggestion-item:hover { border-color: #1a73e8; background: rgba(26,115,232,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .alimail-suggestion-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: #5f6368; text-align: center; }
