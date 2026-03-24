@@ -574,7 +574,7 @@ Example:
                 container.textContent = text;
                 container.dataset.fullText = text;
             } else {
-                container.innerHTML = "<div class="alimail-original-placeholder">Could not extract email. Enter key points to generate reply.</div>";
+                container.innerHTML = '<div class="alimail-original-placeholder">Could not extract email. Enter key points to generate reply.</div>';
                 container.dataset.fullText = "";
             }
         }
@@ -591,13 +591,13 @@ Example:
         const generateBtn = document.getElementById("alimail-generate");
 
         if (!userInput) {
-            resultContainer.innerHTML = "<div class="alimail-error">Please enter key points.</div>";
+            resultContainer.innerHTML = '<div class="alimail-error">Please enter key points.</div>';
             return;
         }
 
         generateBtn.disabled = true;
         generateBtn.textContent = "Generating...";
-        resultContainer.innerHTML = "<div class="alimail-loading">Generating your reply...</div>";
+        resultContainer.innerHTML = '<div class="alimail-loading">Generating your reply...</div>';
 
         try {
             const prompt = buildPrompt(originalEmail, userInput, tone, language);
@@ -640,7 +640,7 @@ Example:
     function insertIntoEmailBody(text) {
         const iframeSelectors = [
             "iframe.e_iframe.e_scroll", ".e_editor iframe", 
-            "iframe[allowtransparency="true"]"
+            'iframe[allowtransparency="true"]'
         ];
         for (const sel of iframeSelectors) {
             const iframes = document.querySelectorAll(sel);
@@ -652,7 +652,7 @@ Example:
                         insertTextAtCursor(body, text, doc);
                         return true;
                     }
-                    const editable = doc.querySelector("[contenteditable="true"]");
+                    const editable = doc.querySelector('[contenteditable="true"]');
                     if (editable) {
                         insertTextAtCursor(editable, text, doc);
                         return true;
@@ -660,7 +660,7 @@ Example:
                 } catch(e) {}
             }
         }
-        const editables = document.querySelectorAll("[contenteditable="true"]");
+        const editables = document.querySelectorAll('[contenteditable="true"]');
         for (const el of editables) {
             if (el.offsetParent !== null) {
                 insertTextAtCursor(el, text, document);
