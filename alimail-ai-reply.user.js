@@ -509,21 +509,21 @@ Example:
         if (!toolbar) return null;
         
         const subscriptBtn = document.getElementById("sqm_339") || 
-                            document.querySelector([_id=subscript]) ||
+                            document.querySelector('[_id="subscript"]') ||
                             toolbar.querySelector(".e_i_subscript")?.closest(".e_editor_toolbar_item");
         if (!subscriptBtn) return null;
 
         const separator = document.createElement("div");
         separator.id = "alimail-ai-separator";
         separator.className = "e_editor_toolbar_item e_editor_toolbar_separator";
-        separator.innerHTML = "<div class="e_editor_toolbar_separator_b"></div>";
+        separator.innerHTML = '<div class="e_editor_toolbar_separator_b"></div>';
 
         const aiBtn = document.createElement("div");
         aiBtn.id = "alimail-ai-toolbar-btn";
         aiBtn.className = "e_editor_toolbar_item e_editor_toolbar_b_wrap e_editor_toolbar_w";
         aiBtn.setAttribute("_id", "aireply");
         aiBtn.setAttribute("title", "AI Reply Assistant");
-        aiBtn.innerHTML = "<b class="e_i e_i_fs16 e_i_hover ai-icon" style="font-style:normal;">AI</b>";
+        aiBtn.innerHTML = '<b class="e_i e_i_fs16 e_i_hover ai-icon" style="font-style:normal;">AI</b>';
 
         subscriptBtn.insertAdjacentElement("afterend", separator);
         separator.insertAdjacentElement("afterend", aiBtn);
