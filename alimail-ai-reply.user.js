@@ -10,6 +10,8 @@
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @run-at       document-end
+// @updateURL    https://github.com/luisarn/alimail-ai-reply/raw/refs/heads/main/alimail-ai-reply.user.js
+// @downloadURL  https://github.com/luisarn/alimail-ai-reply/raw/refs/heads/main/alimail-ai-reply.user.js
 // ==/UserScript==
 
 (function () {
