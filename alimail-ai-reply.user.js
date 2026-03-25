@@ -623,6 +623,7 @@ Example:
             </div>
         `;
     document.body.appendChild(overlay);
+    makeDraggable(overlay);
 
     // Tab switching
     overlay.querySelectorAll(".alimail-tab").forEach((tab) => {
@@ -762,6 +763,7 @@ Example:
             </div>
         `;
     document.body.appendChild(overlay);
+    makeDraggable(overlay);
 
     overlay
       .querySelector(".alimail-close")
@@ -826,6 +828,65 @@ Example:
         b.onmouseenter = () => (b.style.background = colors.primaryHover);
         b.onmouseleave = () => (b.style.background = colors.primary);
       });
+  }
+
+  // Make element draggable by its header
+  function makeDraggable(element) {
+    const header = element.querySelector('.alimail-header');
+    if (!header) return;
+
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+
+    // Set cursor style
+    header.style.cursor = 'grab';
+    header.style.userSelect = 'none';
+
+    header.addEventListener('mousedown', (e) => {
+      // Ignore close and settings buttons
+      if (e.target.closest('.alimail-close') || e.target.closest('.alimail-settings-btn')) {
+        return;
+      }
+
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = element.offsetLeft;
+      startTop = element.offsetTop;
+
+      header.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      let newLeft = startLeft + dx;
+      let newTop = startTop + dy;
+
+      // Clamp to viewport bounds
+      const maxX = window.innerWidth - element.offsetWidth;
+      const maxY = window.innerHeight - element.offsetHeight;
+
+      newLeft = Math.max(0, Math.min(newLeft, maxX));
+      newTop = Math.max(0, Math.min(newTop, maxY));
+
+      element.style.left = newLeft + 'px';
+      element.style.top = newTop + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+
+      isDragging = false;
+      header.style.cursor = 'grab';
+      document.body.style.userSelect = '';
+    });
   }
 
   // Create toolbar button
