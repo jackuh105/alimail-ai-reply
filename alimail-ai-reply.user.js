@@ -851,8 +851,15 @@ Example:
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      startLeft = element.offsetLeft;
-      startTop = element.offsetTop;
+
+      // Get actual position using getBoundingClientRect (accounts for transform)
+      const rect = element.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+
+      element.style.transform = 'none';
+      element.style.left = startLeft + 'px';
+      element.style.top = startTop + 'px';
 
       header.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
