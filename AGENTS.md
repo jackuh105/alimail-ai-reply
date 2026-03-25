@@ -141,9 +141,12 @@ Template variables use double curly braces:
 | DeepSeek | `https://api.deepseek.com/v1/chat/completions` | `Authorization: Bearer {key}` |
 | Moonshot Kimi | `https://api.moonshot.cn/v1/chat/completions` | `Authorization: Bearer {key}` |
 | MiniMax | `https://api.minimax.chat/v1/text/chatcompletion_v2` | `Authorization: Bearer {key}` |
+| OpenAI | `https://api.openai.com/v1/chat/completions` | `Authorization: Bearer {key}` |
+| Anthropic Claude | `https://api.anthropic.com/v1/messages` | `x-api-key: {key}` |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | API key in URL |
 | Custom | `http://localhost:8000/v1/chat/completions` | `Authorization: Bearer {key}` (optional) |
 
-**Note:** All providers use OpenAI-compatible API format with `Authorization: Bearer` header.
+**Note:** Most providers use OpenAI-compatible API format with `Authorization: Bearer` header. Anthropic uses `x-api-key` header. Gemini uses API key in URL query parameter.
 
 ## Testing Instructions
 
