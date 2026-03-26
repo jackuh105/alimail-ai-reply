@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Alimail AI Reply Assistant (Backend-Free)
 // @namespace    http://tampermonkey.net/
-// @version      3.0.1
+// @version      3.3
 // @description  Auto-generate professional email replies for Alimail webmail - Pure Tampermonkey, no backend required
 // @author       luisarn
 // @match        https://qiye.aliyun.com/alimail/*
@@ -61,6 +61,19 @@ Reply:`,
       langPortuguese: "Write the reply in Portuguese.",
       langMixed:
         "Use the same language as the original email, or mix languages naturally if appropriate.",
+      // Humanize Settings
+      humanizeOutput: false,
+      humanizeInstruction: 'Write like a real human - avoid AI clichés like "I hope this email finds you well", "I\'m writing to", or overly flowery language. Use natural contractions (I\'m, don\'t, we\'ll) and vary sentence length. Be direct and conversational rather than robotic or formulaic.',
+      // ASR Settings
+      asrEnabled: true,
+      asrProvider: 'openai',
+      asrApiKey: '',
+      asrApiUrl: 'https://api.openai.com/v1/audio/transcriptions',
+      asrModel: 'whisper-1',
+      asrLanguage: 'auto',
+      // Voice Reply Defaults
+      voiceDefaultTone: 'professional',
+      voiceDefaultLanguage: 'mixed'
     },
     providers: {
       dashscope: {
@@ -261,6 +274,20 @@ Reply:`,
         langEnglish: this.get("langEnglish"),
         langPortuguese: this.get("langPortuguese"),
         langMixed: this.get("langMixed"),
+        humanizeOutput: this.get("humanizeOutput"),
+        humanizeInstruction: this.get("humanizeInstruction"),
+      };
+    },
+    getAsrAll() {
+      return {
+        asrEnabled: this.get("asrEnabled"),
+        asrProvider: this.get("asrProvider"),
+        asrApiKey: this.get("asrApiKey"),
+        asrApiUrl: this.get("asrApiUrl"),
+        asrModel: this.get("asrModel"),
+        asrLanguage: this.get("asrLanguage"),
+        voiceDefaultTone: this.get("voiceDefaultTone"),
+        voiceDefaultLanguage: this.get("voiceDefaultLanguage"),
       };
     },
     saveAll(settings) {
@@ -433,12 +460,70 @@ Reply:`,
         .alimail-analyze-btn { margin: 16px; }
         .alimail-suggestion-category { font-size: 12px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 16px 4px; }
         .alimail-suggestion-category:first-child { margin-top: 0; }
+        /* Voice Input Styles */
+        #alimail-voice-overlay {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 999999; background: #fff; color: #333; border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px; display: none; border: 1px solid #e0e0e0;
+            width: 400px; max-width: 90vw; padding: 32px;
+        }
+        #alimail-voice-overlay.visible { display: flex; flex-direction: column; align-items: center; animation: fadeIn 0.2s ease-out; }
+        .alimail-voice-title { font-size: 18px; font-weight: 600; color: #202124; margin-bottom: 24px; text-align: center; }
+        .alimail-voice-visualizer {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 24px; position: relative;
+        }
+        .alimail-voice-visualizer.recording { animation: voicePulse 1.5s ease-in-out infinite; }
+        @keyframes voicePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(26,115,232,0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(26,115,232,0); }
+        }
+        .alimail-voice-visualizer.processing { animation: voiceSpin 2s linear infinite; }
+        @keyframes voiceSpin { to { transform: rotate(360deg); } }
+        .alimail-voice-waves {
+            display: flex; gap: 6px; align-items: center; justify-content: center;
+            height: 60px;
+        }
+        .alimail-voice-wave {
+            width: 6px; background: #fff; border-radius: 3px;
+            animation: wave 0.6s ease-in-out infinite alternate;
+        }
+        .alimail-voice-wave:nth-child(1) { height: 20px; animation-delay: 0s; }
+        .alimail-voice-wave:nth-child(2) { height: 40px; animation-delay: 0.1s; }
+        .alimail-voice-wave:nth-child(3) { height: 30px; animation-delay: 0.2s; }
+        .alimail-voice-wave:nth-child(4) { height: 50px; animation-delay: 0.3s; }
+        .alimail-voice-wave:nth-child(5) { height: 25px; animation-delay: 0.4s; }
+        @keyframes wave { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+        .alimail-voice-status { font-size: 14px; color: #5f6368; margin-bottom: 24px; text-align: center; }
+        .alimail-voice-timer { font-size: 24px; font-weight: 600; color: #1a73e8; margin-bottom: 24px; font-variant-numeric: tabular-nums; }
+        .alimail-voice-buttons { display: flex; gap: 12px; width: 100%; justify-content: center; }
+        .alimail-voice-btn {
+            padding: 12px 24px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .alimail-voice-btn-primary { background: #1a73e8; color: #fff; }
+        .alimail-voice-btn-primary:hover { background: #1557b0; }
+        .alimail-voice-btn-secondary { background: #f1f3f4; color: #5f6368; }
+        .alimail-voice-btn-secondary:hover { background: #e8eaed; }
+        .alimail-voice-btn-danger { background: #ea4335; color: #fff; }
+        .alimail-voice-btn-danger:hover { background: #d33b28; }
+        #alimail-voice-toolbar-btn { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        #alimail-voice-toolbar-btn:hover { background-color: rgba(0,0,0,0.05); }
+        #alimail-voice-toolbar-btn .voice-icon { width: 16px; height: 16px; color: #666; }
+        #alimail-voice-toolbar-btn:hover .voice-icon { color: #333; }
+        #alimail-voice-toolbar-btn.recording .voice-icon { color: #ea4335; }
     `;
   GM_addStyle(styles);
 
   // Build prompt for LLM
-  function buildPrompt(originalEmail, userInput, tone, language) {
+  function buildPrompt(originalEmail, userInput, tone, language, humanize = null) {
     const settings = Settings.getAll();
+    const shouldHumanize = humanize !== null ? humanize : settings.humanizeOutput;
     const toneInstructions = {
       professional: settings.toneProfessional,
       friendly: settings.toneFriendly,
@@ -452,7 +537,7 @@ Reply:`,
       mixed: settings.langMixed,
     };
 
-    return settings.promptTemplate
+    let prompt = settings.promptTemplate
       .replace(
         "{{TONE_INSTRUCTION}}",
         toneInstructions[tone] || toneInstructions.professional,
@@ -466,6 +551,12 @@ Reply:`,
         originalEmail || "(No original email content)",
       )
       .replace("{{USER_INPUT}}", userInput);
+
+    if (shouldHumanize) {
+      prompt += '\n\n' + (settings.humanizeInstruction || CONFIG.defaults.humanizeInstruction);
+    }
+
+    return prompt;
   }
 
   // Call LLM API
@@ -608,6 +699,12 @@ Example:
                                 </select>
                             </div>
                         </div>
+                        <div class="alimail-section">
+                            <label class="alimail-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #5f6368;">
+                                <input type="checkbox" id="alimail-humanize" style="cursor: pointer;">
+                                <span>Humanize output (less AI-sounding)</span>
+                            </label>
+                        </div>
                         <button class="alimail-button alimail-generate-btn" id="alimail-generate">Generate Reply</button>
                     </div>
                 </div>
@@ -660,6 +757,12 @@ Example:
       .querySelector("#alimail-generate")
       .addEventListener("click", generateReply);
 
+    // Set humanize checkbox default state
+    const humanizeCheckbox = overlay.querySelector("#alimail-humanize");
+    if (humanizeCheckbox) {
+      humanizeCheckbox.checked = Settings.get("humanizeOutput");
+    }
+
     applyTheme();
     return overlay;
   }
@@ -668,7 +771,7 @@ Example:
   function createSettingsOverlay() {
     const overlay = document.createElement("div");
     overlay.id = "alimail-settings-overlay";
-    const settings = Settings.getAll();
+    const settings = { ...Settings.getAll(), ...Settings.getAsrAll() };
     const provider =
       CONFIG.providers[settings.provider] ||
       CONFIG.providers[CONFIG.defaults.provider];
@@ -758,6 +861,89 @@ Example:
                         </div>
                     </details>
                 </div>
+                <div class="alimail-settings-section">
+                    <div class="alimail-settings-section-title">✨ Humanize Output</div>
+                    <div class="alimail-form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settings-humanize-default" ${settings.humanizeOutput ? "checked" : ""}>
+                            <span>Enable humanize by default</span>
+                        </label>
+                        <div class="alimail-help-text">When enabled, the "Humanize output" checkbox will be checked by default when opening the AI Reply popup.</div>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">Humanize Instruction</div>
+                        <textarea class="alimail-textarea" id="settings-humanize-instruction" placeholder="${CONFIG.defaults.humanizeInstruction.substring(0, 50)}...">${settings.humanizeInstruction || ""}</textarea>
+                        <div class="alimail-help-text">Instruction appended to the prompt when humanize is enabled. Customize to adjust the writing style.</div>
+                    </div>
+                </div>
+                <div class="alimail-settings-section">
+                    <div class="alimail-settings-section-title">🎤 Voice Input (ASR) Settings</div>
+                    <div class="alimail-form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settings-asr-enabled" ${settings.asrEnabled ? "checked" : ""}>
+                            <span>Enable Voice Input</span>
+                        </label>
+                        <div class="alimail-help-text">Enable microphone button in toolbar for voice-to-text reply generation.</div>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">ASR Provider</div>
+                        <select class="alimail-select" id="settings-asr-provider">
+                            <option value="openai" ${settings.asrProvider === "openai" ? "selected" : ""}>OpenAI Whisper</option>
+                            <option value="custom" ${settings.asrProvider === "custom" ? "selected" : ""}>Custom/OpenAI-Compatible</option>
+                        </select>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">ASR API Key</div>
+                        <input type="password" class="alimail-input" id="settings-asr-apikey" value="${settings.asrApiKey || ""}" placeholder="sk-...">
+                        <div class="alimail-help-text">API key for speech recognition service. Can be same as LLM key if using OpenAI.</div>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">ASR Model</div>
+                        <input type="text" class="alimail-input" id="settings-asr-model" value="${settings.asrModel || "whisper-1"}" placeholder="whisper-1">
+                        <div class="alimail-help-text">Model name for speech recognition (e.g., whisper-1).</div>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">ASR API URL</div>
+                        <input type="text" class="alimail-input" id="settings-asr-apiurl" value="${settings.asrApiUrl || ""}" placeholder="https://api.openai.com/v1/audio/transcriptions">
+                        <div class="alimail-help-text">Leave empty to use OpenAI default endpoint.</div>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">ASR Language</div>
+                        <select class="alimail-select" id="settings-asr-language">
+                            <option value="auto" ${settings.asrLanguage === "auto" ? "selected" : ""}>Auto-detect</option>
+                            <option value="zh" ${settings.asrLanguage === "zh" ? "selected" : ""}>Chinese (zh)</option>
+                            <option value="en" ${settings.asrLanguage === "en" ? "selected" : ""}>English (en)</option>
+                            <option value="pt" ${settings.asrLanguage === "pt" ? "selected" : ""}>Portuguese (pt)</option>
+                            <option value="ja" ${settings.asrLanguage === "ja" ? "selected" : ""}>Japanese (ja)</option>
+                            <option value="ko" ${settings.asrLanguage === "ko" ? "selected" : ""}>Korean (ko)</option>
+                            <option value="es" ${settings.asrLanguage === "es" ? "selected" : ""}>Spanish (es)</option>
+                            <option value="fr" ${settings.asrLanguage === "fr" ? "selected" : ""}>French (fr)</option>
+                            <option value="de" ${settings.asrLanguage === "de" ? "selected" : ""}>German (de)</option>
+                        </select>
+                        <div class="alimail-help-text">Language for speech recognition. Auto-detect works well for most cases.</div>
+                    </div>
+                </div>
+                <div class="alimail-settings-section">
+                    <div class="alimail-settings-section-title">🎤 Voice Reply Defaults</div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">Default Tone for Voice Replies</div>
+                        <select class="alimail-select" id="settings-voice-tone">
+                            <option value="concise" ${settings.voiceDefaultTone === "concise" ? "selected" : ""}>Concise</option>
+                            <option value="friendly" ${settings.voiceDefaultTone === "friendly" ? "selected" : ""}>Friendly</option>
+                            <option value="professional" ${settings.voiceDefaultTone === "professional" ? "selected" : ""}>Professional</option>
+                            <option value="detailed" ${settings.voiceDefaultTone === "detailed" ? "selected" : ""}>Detailed</option>
+                        </select>
+                    </div>
+                    <div class="alimail-form-group">
+                        <div class="alimail-label">Default Language for Voice Replies</div>
+                        <select class="alimail-select" id="settings-voice-language">
+                            <option value="chinese" ${settings.voiceDefaultLanguage === "chinese" ? "selected" : ""}>繁體中文</option>
+                            <option value="english" ${settings.voiceDefaultLanguage === "english" ? "selected" : ""}>English</option>
+                            <option value="portuguese" ${settings.voiceDefaultLanguage === "portuguese" ? "selected" : ""}>Portuguese</option>
+                            <option value="mixed" ${settings.voiceDefaultLanguage === "mixed" ? "selected" : ""}>Mixed</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="alimail-settings-footer">
                 <button class="alimail-button secondary" id="settings-cancel">Cancel</button>
@@ -806,6 +992,18 @@ Example:
         langPortuguese: document.getElementById("settings-lang-portuguese")
           .value,
         langMixed: document.getElementById("settings-lang-mixed").value,
+        // Humanize Settings
+        humanizeOutput: document.getElementById("settings-humanize-default").checked,
+        humanizeInstruction: document.getElementById("settings-humanize-instruction").value,
+        // ASR Settings
+        asrEnabled: document.getElementById("settings-asr-enabled").checked,
+        asrProvider: document.getElementById("settings-asr-provider").value,
+        asrApiKey: document.getElementById("settings-asr-apikey").value,
+        asrApiUrl: document.getElementById("settings-asr-apiurl").value,
+        asrModel: document.getElementById("settings-asr-model").value,
+        asrLanguage: document.getElementById("settings-asr-language").value,
+        voiceDefaultTone: document.getElementById("settings-voice-tone").value,
+        voiceDefaultLanguage: document.getElementById("settings-voice-language").value,
       });
       overlay.classList.remove("visible");
     });
@@ -925,8 +1123,23 @@ Example:
     aiBtn.innerHTML =
       '<b class="e_i e_i_fs16 e_i_hover ai-icon" style="font-style:normal;">AI</b>';
 
+    // Voice button
+    const voiceBtn = document.createElement("div");
+    voiceBtn.id = "alimail-voice-toolbar-btn";
+    voiceBtn.className = "e_editor_toolbar_item e_editor_toolbar_b_wrap e_editor_toolbar_w";
+    voiceBtn.setAttribute("_id", "voicereply");
+    voiceBtn.setAttribute("title", "Voice Input Reply");
+    voiceBtn.innerHTML = `
+        <svg class="e_i e_i_fs16 e_i_hover voice-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+        </svg>
+    `;
+
     subscriptBtn.insertAdjacentElement("afterend", separator);
     separator.insertAdjacentElement("afterend", aiBtn);
+    aiBtn.insertAdjacentElement("afterend", voiceBtn);
 
     aiBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -942,11 +1155,24 @@ Example:
       }
     });
 
+    voiceBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const asrSettings = Settings.getAsrAll();
+      if (!asrSettings.asrEnabled) {
+        alert("Voice input is disabled. Please enable it in Settings and configure your ASR API key.");
+        return;
+      }
+      const voiceOverlay = document.getElementById("alimail-voice-overlay") || createVoiceOverlay();
+      voiceOverlay.classList.add("visible");
+    });
+
     return aiBtn;
   }
 
   function removeToolbarButton() {
     document.getElementById("alimail-ai-toolbar-btn")?.remove();
+    document.getElementById("alimail-voice-toolbar-btn")?.remove();
     document.getElementById("alimail-ai-separator")?.remove();
   }
 
@@ -981,12 +1207,354 @@ Example:
         container.textContent = text;
         container.dataset.fullText = text;
       } else {
-        container.innerHTML =
-          '<div class="alimail-original-placeholder">Could not extract email. Enter key points to generate reply.</div>';
+        container.innerHTML = '<div class="alimail-original-placeholder">Could not extract email. Enter key points to generate reply.</div>';
         container.dataset.fullText = "";
       }
     }
   }
+
+  // Voice recording state
+  let voiceRecorder = null;
+  let voiceAudioChunks = [];
+  let voiceRecordingStartTime = null;
+  let voiceRecordingTimer = null;
+  let voiceStream = null;
+  let voiceRecordingCanceled = false;
+
+  // Create voice input overlay
+  function createVoiceOverlay() {
+    const overlay = document.createElement("div");
+    overlay.id = "alimail-voice-overlay";
+    overlay.innerHTML = `
+        <div class="alimail-voice-title">Voice Input</div>
+        <div class="alimail-voice-visualizer" id="alimail-voice-visualizer">
+            <div class="alimail-voice-waves" id="alimail-voice-waves" style="display: none;">
+                <div class="alimail-voice-wave"></div>
+                <div class="alimail-voice-wave"></div>
+                <div class="alimail-voice-wave"></div>
+                <div class="alimail-voice-wave"></div>
+                <div class="alimail-voice-wave"></div>
+            </div>
+        </div>
+        <div class="alimail-voice-timer" id="alimail-voice-timer">00:00</div>
+        <div class="alimail-voice-status" id="alimail-voice-status">Initializing...</div>
+        <div class="alimail-voice-buttons" id="alimail-voice-buttons">
+            <button class="alimail-voice-btn alimail-voice-btn-secondary" id="alimail-voice-cancel">Cancel</button>
+            <button class="alimail-voice-btn alimail-voice-btn-primary" id="alimail-voice-complete">Complete</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("#alimail-voice-cancel").addEventListener("click", () => {
+        voiceRecordingCanceled = true;
+        stopVoiceRecording();
+        resetVoiceOverlay();
+        overlay.classList.remove("visible");
+    });
+
+    overlay.querySelector("#alimail-voice-complete").addEventListener("click", () => {
+        stopVoiceRecordingAndProcess();
+    });
+
+    // Close on escape
+    overlay.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            voiceRecordingCanceled = true;
+            stopVoiceRecording();
+            resetVoiceOverlay();
+            overlay.classList.remove("visible");
+        }
+    });
+
+    // Auto-start recording when overlay becomes visible
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (overlay.classList.contains('visible')) {
+                    // Small delay to ensure overlay is fully rendered
+                    setTimeout(() => startVoiceRecording(), 100);
+                } else {
+                    voiceRecordingCanceled = true;
+                    stopVoiceRecording();
+                }
+            }
+        });
+    });
+    observer.observe(overlay, { attributes: true });
+
+    return overlay;
+  }
+
+  // Start voice recording
+  async function startVoiceRecording() {
+    const asrSettings = Settings.getAsrAll();
+    if (!asrSettings.asrEnabled) {
+        alert("Voice input is disabled. Please enable it in Settings.");
+        return;
+    }
+
+    try {
+        voiceRecordingCanceled = false;
+        voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        voiceRecorder = new MediaRecorder(voiceStream);
+        voiceAudioChunks = [];
+
+        voiceRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                voiceAudioChunks.push(event.data);
+            }
+        };
+
+        voiceRecorder.onstop = async () => {
+            if (voiceRecordingCanceled) {
+                voiceRecorder = null;
+                return; // Don't process if canceled
+            }
+            // Prevent processing if overlay is already closed
+            const overlay = document.getElementById("alimail-voice-overlay");
+            if (!overlay || !overlay.classList.contains("visible")) {
+                voiceRecorder = null;
+                return;
+            }
+            const audioBlob = new Blob(voiceAudioChunks, { type: 'audio/webm' });
+            await processVoiceAudio(audioBlob);
+            voiceRecorder = null;
+        };
+
+        voiceRecorder.start();
+        voiceRecordingStartTime = Date.now();
+        
+        // Update UI
+        const overlay = document.getElementById("alimail-voice-overlay");
+        const visualizer = overlay.querySelector("#alimail-voice-visualizer");
+        const waves = overlay.querySelector("#alimail-voice-waves");
+        const status = overlay.querySelector("#alimail-voice-status");
+
+        visualizer.classList.add("recording");
+        waves.style.display = "flex";
+        status.textContent = "Recording... Speak now";
+
+        // Start timer
+        voiceRecordingTimer = setInterval(updateVoiceTimer, 1000);
+
+    } catch (error) {
+        console.error("Error starting voice recording:", error);
+        const status = document.querySelector("#alimail-voice-status");
+        if (status) status.textContent = "Error: Could not access microphone";
+        alert("Could not access microphone. Please check permissions.");
+    }
+  }
+
+  // Update recording timer
+  function updateVoiceTimer() {
+    const elapsed = Math.floor((Date.now() - voiceRecordingStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const seconds = (elapsed % 60).toString().padStart(2, '0');
+    const timerEl = document.getElementById("alimail-voice-timer");
+    if (timerEl) timerEl.textContent = `${minutes}:${seconds}`;
+  }
+
+  // Stop voice recording
+  function stopVoiceRecording() {
+    if (voiceRecordingTimer) {
+        clearInterval(voiceRecordingTimer);
+        voiceRecordingTimer = null;
+    }
+    if (voiceRecorder && voiceRecorder.state !== 'inactive') {
+        try {
+            voiceRecorder.stop();
+        } catch (e) {
+            // Recorder might already be stopped
+        }
+    }
+    if (voiceStream) {
+        voiceStream.getTracks().forEach(track => track.stop());
+        voiceStream = null;
+    }
+    
+    // Reset UI
+    const overlay = document.getElementById("alimail-voice-overlay");
+    if (overlay) {
+        const visualizer = overlay.querySelector("#alimail-voice-visualizer");
+        const waves = overlay.querySelector("#alimail-voice-waves");
+        const status = overlay.querySelector("#alimail-voice-status");
+        const buttons = overlay.querySelector("#alimail-voice-buttons");
+
+        if (visualizer) visualizer.classList.remove("recording", "processing");
+        if (waves) waves.style.display = "none";
+        if (status) status.textContent = "Initializing...";
+        if (buttons) buttons.style.display = "flex";
+        
+        const timerEl = overlay.querySelector("#alimail-voice-timer");
+        if (timerEl) timerEl.textContent = "00:00";
+    }
+    
+    voiceRecorder = null;
+  }
+
+  // Stop recording and process
+  function stopVoiceRecordingAndProcess() {
+    stopVoiceRecording();
+    
+    // Show processing state
+    const overlay = document.getElementById("alimail-voice-overlay");
+    const visualizer = overlay.querySelector("#alimail-voice-visualizer");
+    const status = overlay.querySelector("#alimail-voice-status");
+    const buttons = overlay.querySelector("#alimail-voice-buttons");
+
+    visualizer.classList.add("processing");
+    status.textContent = "Processing speech...";
+    buttons.style.display = "none";
+  }
+
+  // Process voice audio through ASR
+  async function processVoiceAudio(audioBlob) {
+    const asrSettings = Settings.getAsrAll();
+    const overlay = document.getElementById("alimail-voice-overlay");
+
+    try {
+        // Call ASR API
+        const transcript = await callAsrApi(audioBlob, asrSettings);
+        
+        if (transcript) {
+            // Generate reply from transcript
+            await generateReplyFromVoice(transcript);
+        } else {
+            throw new Error("No speech recognized");
+        }
+    } catch (error) {
+        console.error("ASR Error:", error);
+        if (!overlay || !overlay.classList.contains("visible")) return;
+        const status = overlay.querySelector("#alimail-voice-status");
+        const buttons = overlay.querySelector("#alimail-voice-buttons");
+        const visualizer = overlay.querySelector("#alimail-voice-visualizer");
+        if (status) status.textContent = `Error: ${error.message}`;
+        if (buttons) buttons.style.display = "flex";
+        if (visualizer) visualizer.classList.remove("processing");
+    }
+  }
+
+  // Call ASR API
+  async function callAsrApi(audioBlob, asrSettings) {
+    const apiUrl = asrSettings.asrApiUrl || 'https://api.openai.com/v1/audio/transcriptions';
+    const apiKey = asrSettings.asrApiKey;
+    const model = asrSettings.asrModel || 'whisper-1';
+    const language = asrSettings.asrLanguage || 'auto';
+
+    if (!apiKey) {
+        throw new Error("ASR API key not configured. Please check Settings.");
+    }
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'recording.webm');
+    formData.append('model', model);
+    if (language !== 'auto') {
+        formData.append('language', language);
+    }
+    formData.append('response_format', 'json');
+
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: formData
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ASR API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.text || data.transcript || '';
+  }
+
+  // Generate email reply from voice transcript
+  async function generateReplyFromVoice(transcript) {
+    const overlay = document.getElementById("alimail-voice-overlay");
+    const status = overlay.querySelector("#alimail-voice-status");
+    
+    status.textContent = "Generating reply...";
+
+    try {
+        const asrSettings = Settings.getAsrAll();
+        const originalEmail = extractOriginalEmail();
+        const tone = asrSettings.voiceDefaultTone || 'professional';
+        const language = asrSettings.voiceDefaultLanguage || 'mixed';
+
+        const prompt = buildPrompt(originalEmail, transcript, tone, language);
+        const reply = await callLLM(prompt);
+
+        // Close voice overlay
+        overlay.classList.remove("visible");
+        resetVoiceOverlay();
+
+        // Insert into email body
+        const success = insertIntoEmailBody(reply);
+        
+        if (success) {
+            // Show success notification
+            showNotification('Voice reply inserted successfully!', 'success');
+        } else {
+            showNotification('Failed to insert reply. Please try manually.', 'error');
+            // Copy to clipboard as fallback
+            await navigator.clipboard.writeText(reply);
+            showNotification('Reply copied to clipboard!', 'info');
+        }
+    } catch (error) {
+        console.error("Reply generation error:", error);
+        const buttons = overlay.querySelector("#alimail-voice-buttons");
+        status.textContent = `Error: ${error.message}`;
+        buttons.style.display = "flex";
+        overlay.querySelector("#alimail-voice-visualizer").classList.remove("processing");
+    }
+  }
+
+  // Reset voice overlay to initial state
+  function resetVoiceOverlay() {
+    const overlay = document.getElementById("alimail-voice-overlay");
+    if (!overlay) return;
+
+    const visualizer = overlay.querySelector("#alimail-voice-visualizer");
+    const waves = overlay.querySelector("#alimail-voice-waves");
+    const status = overlay.querySelector("#alimail-voice-status");
+    const buttons = overlay.querySelector("#alimail-voice-buttons");
+    const timerEl = overlay.querySelector("#alimail-voice-timer");
+
+    if (visualizer) visualizer.classList.remove("recording", "processing");
+    if (waves) waves.style.display = "none";
+    if (status) status.textContent = "Initializing...";
+    if (buttons) buttons.style.display = "flex";
+    if (timerEl) timerEl.textContent = "00:00";
+  }
+
+  // Show notification
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 1000000;
+        padding: 16px 24px; border-radius: 8px; font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out;
+        ${type === 'success' ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : ''}
+        ${type === 'error' ? 'background: #fce8e8; color: #721c24; border: 1px solid #f5c6cb;' : ''}
+        ${type === 'info' ? 'background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;' : ''}
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // Add notification animations
+  const notificationStyles = `
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  `;
+  GM_addStyle(notificationStyles);
 
   // Generate smart suggestions based on email content
   async function generateSmartSuggestions() {
@@ -1200,6 +1768,8 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
       .value.trim();
     const tone = document.getElementById("alimail-tone").value;
     const language = document.getElementById("alimail-language").value;
+    const humanizeCheckbox = document.getElementById("alimail-humanize");
+    const humanize = humanizeCheckbox ? humanizeCheckbox.checked : false;
     const originalEl = document.getElementById("alimail-original-text");
     const originalEmail =
       originalEl?.dataset.fullText || originalEl?.textContent || "";
@@ -1218,7 +1788,7 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
       '<div class="alimail-loading">Generating your reply...</div>';
 
     try {
-      const prompt = buildPrompt(originalEmail, userInput, tone, language);
+      const prompt = buildPrompt(originalEmail, userInput, tone, language, humanize);
       generatedReplyText = await callLLM(prompt);
       showResult(generatedReplyText);
     } catch (error) {
@@ -1353,6 +1923,7 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
 
     createOverlay();
     createSettingsOverlay();
+    createVoiceOverlay();
 
     function updateVisibility() {
       if (isComposePage()) {
@@ -1363,6 +1934,13 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
         document
           .getElementById("alimail-reply-overlay")
           ?.classList.remove("visible");
+        const voiceOverlay = document.getElementById("alimail-voice-overlay");
+        if (voiceOverlay?.classList.contains("visible")) {
+          voiceRecordingCanceled = true;
+          stopVoiceRecording();
+          resetVoiceOverlay();
+          voiceOverlay.classList.remove("visible");
+        }
       }
     }
 
@@ -1386,6 +1964,13 @@ NEGATIVE PROFESSIONAL: [Reply text]`;
         document
           .getElementById("alimail-settings-overlay")
           ?.classList.remove("visible");
+        const voiceOverlay = document.getElementById("alimail-voice-overlay");
+        if (voiceOverlay?.classList.contains("visible")) {
+          voiceRecordingCanceled = true;
+          stopVoiceRecording();
+          resetVoiceOverlay();
+          voiceOverlay.classList.remove("visible");
+        }
       }
     });
   }
