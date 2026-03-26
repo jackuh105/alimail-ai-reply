@@ -6,6 +6,10 @@ A pure Tampermonkey userscript that generates professional email replies in Alim
 
 - 🚀 **No Backend Required**: Direct API calls to LLM providers from the browser
 - 🧠 **Multiple AI Providers Supported**:
+  - Alibaba DashScope (Qwen series)
+  - DeepSeek (deepseek-chat, deepseek-coder)
+  - Moonshot Kimi (moonshot-v1 series)
+  - MiniMax (abab series)
   - OpenAI (GPT-4, GPT-4o, GPT-3.5-turbo)
   - Google Gemini (2.0 Flash, 1.5 Pro, etc.)
   - Anthropic Claude (3.5 Sonnet, etc.)
@@ -44,9 +48,9 @@ A pure Tampermonkey userscript that generates professional email replies in Alim
 2. 🧩 Click on the Tampermonkey extension icon
 3. ⚙️ Select "AI Reply Settings" from the menu
 4. 🔑 Configure your settings:
-   - **Provider**: Choose your AI provider (OpenAI, Gemini, Anthropic, or Custom)
+   - **Provider**: Choose your AI provider
    - **API Key**: Enter your API key from the provider
-   - **Model**: The model to use (e.g., `gpt-4o-mini`, `gemini-2.0-flash`)
+   - **Model**: The model to use
    - **Custom API URL** (optional): For proxy or custom endpoints
 
 #### 🎤 Voice Input Configuration (Optional)
@@ -61,6 +65,30 @@ To enable voice input, configure these settings:
 5. 💾 Click "Save Settings"
 
 ## 🔑 Getting API Keys
+
+### Alibaba DashScope
+1. Go to [Alibaba Cloud DashScope](https://dashscope.aliyun.com/)
+2. Sign in with your Alibaba Cloud account
+3. Navigate to API Key Management
+4. Create a new API key
+
+### DeepSeek
+1. Go to [DeepSeek Platform](https://platform.deepseek.com/)
+2. Sign up for an account
+3. Go to API Keys section
+4. Create a new API key
+
+### Moonshot Kimi
+1. Go to [Moonshot Platform](https://platform.moonshot.cn/)
+2. Sign up for an account
+3. Navigate to API Key Management
+4. Create a new API key
+
+### MiniMax
+1. Go to [MiniMax Platform](https://www.minimaxi.com/)
+2. Sign up for a developer account
+3. Access the API Keys section
+4. Generate a new API key
 
 ### 🤖 OpenAI
 1. Go to [OpenAI Platform](https://platform.openai.com/)
@@ -88,20 +116,34 @@ For voice input, you can use:
 
 1. 📧 Open Alimail Webmail and click "Reply" on any email
 2. 🖱️ Click the **AI** button in the toolbar (next to the subscript button)
-3. 🪟 The popup will appear with 2 columns:
-   - 📄 **Left column**: Original email (auto-extracted) and your key points input
-   - 📝 **Right column**: Generated reply
-4. ✏️ Enter your bullet points in the text area:
+3. 🪟 The popup will appear with two tabs:
+
+#### Tab 1: Custom Reply
+A 2-column layout for personalized replies:
+- 📄 **Left column**: Original email (auto-extracted) and your key points input
+- 📝 **Right column**: Generated reply
+
+Steps:
+1. ✏️ Enter your bullet points in the text area:
    ```
    - Apologize for the delay
    - Request additional documents
    - Meeting is scheduled for Friday at 3pm
    ```
-5. 🎯 Select your preferred **Tone** (Professional/Friendly/Concise/Detailed)
-6. 🌍 Select **Language** (Traditional Chinese/English/Portuguese/Mixed)
-7. ✨ Check **Humanize output** for a more natural, less AI-sounding reply
-8. 🎬 Click **Generate Reply**
-9. 📤 Click **Insert to Email** to add directly to the compose area, or **Copy** to clipboard
+2. 🎯 Select your preferred **Tone** (Concise/Friendly/Professional/Detailed)
+3. 🌍 Select **Language** (Traditional Chinese/English/Portuguese/Mixed)
+4. ✨ Check **Humanize output** for a more natural, less AI-sounding reply
+5. 🎬 Click **Generate Reply**
+6. 📤 Click **Insert to Email** to add directly to the compose area, or **Copy** to clipboard
+
+#### Tab 2: Smart Suggestions
+AI-generated context-aware reply suggestions:
+- Automatically analyzes the email content
+- Generates 9 reply options organized by attitude:
+  - **Neutral** (No Decision): 3 options (Concise, Friendly, Professional)
+  - **Positive** (Will Do/Accept): 3 options (Concise, Friendly, Professional)
+  - **Negative** (Won't Do/Decline): 3 options (Concise, Friendly, Professional)
+- Click any suggestion to insert directly into the email body
 
 ### 🎤 Voice Input
 
